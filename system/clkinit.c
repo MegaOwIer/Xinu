@@ -25,7 +25,7 @@ void	clkinit(void)
 	/* Initialize the time since boot to zero */
 
 	clktime = 0;
-        count1000 = 0;
+	count1000 = 0;
 	/* Set interrupt vector for the clock to invoke clkdisp */
 	set_evec(IRQBASE, (uint32)clkdisp);
 

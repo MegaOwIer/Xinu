@@ -40,7 +40,26 @@ pid32	create(
 
 	/* Initialize process table entry for new process */
 	prptr->prstate = PR_SUSP;	/* Initial state is suspended	*/
-	prptr->prprio = priority;
+
+	/* For Task#2 */
+	// prptr->prprio = priority;
+	prptr->prprio = INITPRIO;
+	prptr->prclass = priority;
+	switch(priority) {
+	case PRIO1:
+		prptr->prtimeleft = T1;
+		break;
+	case PRIO2:
+		prptr->prtimeleft = T2;
+		break;
+	case PRIO3:
+		prptr->prtimeleft = T3;
+		break;
+	default:
+		prptr->prtimeleft = QUANTUM;
+		break;
+	}
+
 	prptr->prstkbase = (char *)saddr;
 	prptr->prstklen = ssize;
 	prptr->prname[PNMLEN-1] = NULLCH;
