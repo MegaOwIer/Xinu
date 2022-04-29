@@ -362,6 +362,7 @@ extern	int32	insw(int32, int32 ,int32);
 extern	int32	outsw(int32, int32, int32);
 extern	int32	lidt(void);
 extern	int32	cpuid(void);
+extern	void	ret_k2u(void);
 
 /* in file suspend.c */
 extern	syscall	suspend(pid32);

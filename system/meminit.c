@@ -19,6 +19,14 @@ struct	mbootinfo *bootinfo = (struct mbootinfo *)1;
 
 /* Segment table structures */
 
+/* Task state segment */
+
+#define	GDT_ENTRY_TSS		0x7
+
+struct tss_struct TSS = {
+	.tss_ss0 = 0x3 << 3
+};
+
 /* Segment Descriptor */
 
 struct __attribute__ ((__packed__)) sd {
@@ -30,24 +38,33 @@ struct __attribute__ ((__packed__)) sd {
 	unsigned char	sd_hibase;
 };
 
-#define	NGD			4	/* Number of global descriptor entries	*/
+#define	NGD			8	/* Number of global descriptor entries	*/
 #define FLAGS_GRANULARITY	0x80
 #define FLAGS_SIZE		0x40
 #define	FLAGS_SETTINGS		(FLAGS_GRANULARITY | FLAGS_SIZE)
 
-struct sd gdt_copy[NGD] = {
+struct	sd	gdt_copy[NGD] = {
 /*   sd_lolimit  sd_lobase   sd_midbase  sd_access   sd_hilim_fl sd_hibase */
 /* 0th entry NULL */
 {            0,          0,           0,         0,            0,        0, },
-/* 1st, Kernel Code Segment */
+/* 1st, Kernel Code Segment in Kernel Mode */
 {       0xffff,          0,           0,      0x9a,         0xcf,        0, },
-/* 2nd, Kernel Data Segment */
+/* 2nd, Kernel Data Segment in Kernel Mode */
 {       0xffff,          0,           0,      0x92,         0xcf,        0, },
-/* 3rd, Kernel Stack Segment */
+/* 3rd, Kernel Stack Segment in Kernel Mode */
 {       0xffff,          0,           0,      0x92,         0xcf,        0, },
+/* 4th, Kernel Code Segment in User Mode */
+{       0xffff,          0,           0,      0xFA,         0xc0,        0, },
+/* 5th, Kernel Data Segment in User Mode */
+{       0xffff,          0,           0,      0xF2,         0xc0,        0, },
+/* 6th, Kernel Stack Segment in User Mode */
+{       0xffff,          0,           0,      0xF2,         0xc0,        0, },
+/* 7th, TSS descriptor */
+[GDT_ENTRY_TSS] = 
+{       0xffff,          0,           0,      0x89,         0x00,        0, },
 };
 
-extern	struct	sd gdt[];	/* Global segment table			*/
+extern	struct	sd	gdt[];	/* Global segment table			*/
 
 /*------------------------------------------------------------------------
  * meminit - initialize memory bounds and the free memory list
@@ -173,4 +190,23 @@ void	setsegs()
 	psd->sd_hilim_fl = FLAGS_SETTINGS | ((ds_end >> 16) & 0xff);
 
 	memcpy(gdt, gdt_copy, sizeof(gdt_copy));
+}
+
+
+/*------------------------------------------------------------------------
+ * settasks  -  Initialize the global TSS.
+ *------------------------------------------------------------------------
+ */
+void	settasks()
+{
+	gdt[GDT_ENTRY_TSS].sd_lolimit &= sizeof(TSS) - 1;
+	gdt[GDT_ENTRY_TSS].sd_lobase = (long)(&TSS) & 0xFFFF;
+	gdt[GDT_ENTRY_TSS].sd_midbase = ((long)(&TSS) >> 16) & 0xFF;
+	gdt[GDT_ENTRY_TSS].sd_hibase = ((long)(&TSS) >> 24) & 0xFF;
+
+	asm volatile (
+		"ltr %%ax"
+		:
+		: "a"(GDT_ENTRY_TSS << 3)
+	);
 }

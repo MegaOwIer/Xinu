@@ -3,6 +3,7 @@
 #include <xinu.h>
 
 local	int newpid();
+extern	struct	tss_struct	TSS;
 
 /*------------------------------------------------------------------------
  *  create  -  Create a process to start running a function on x86
@@ -67,11 +68,22 @@ pid32	create(
 		*--saddr = *a--;	/* onto created process's stack	*/
 	*--saddr = (long)INITRET;	/* Push on return address	*/
 
+	TSS.tss_esp0 = (long)saddr;	/* TSS configuation		*/
+
+	/* The fake interrupt return stack				*/
+	*--saddr = 0x33;		/* SS in user mode		*/
+	--saddr;
+	*saddr = (long)saddr + 2;	/* %esp				*/
+	*--saddr = 0;			/* eflags			*/
+	*--saddr = 0x23;		/* CS in user mode		*/
+	*--saddr = (long)funcaddr;
+	*--saddr = 0x2B;		/* DS in user mode		*/
+
 	/* The following entries on the stack must match what ctxsw	*/
 	/*   expects a saved process state to contain: ret address,	*/
 	/*   ebp, interrupt mask, flags, registers, and an old SP	*/
 
-	*--saddr = (long)funcaddr;	/* Make the stack look like it's*/
+	*--saddr = (long)ret_k2u;	/* Make the stack look like it's*/
 					/*   half-way through a call to	*/
 					/*   ctxsw that "returns" to the*/
 					/*   new process		*/
