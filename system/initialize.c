@@ -109,7 +109,7 @@ local process	startup(void)
 	/* Create a process to execute function main() */
 	while(1);
 
-	resume(create((void *)main, INITSTK, INITPRIO,
+	syscall_resume(syscall_create((void *)main, INITPRIO,
 					"Main process", 0, NULL));
 
 	/* Startup process exits at this point */
