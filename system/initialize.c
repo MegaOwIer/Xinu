@@ -82,7 +82,7 @@ void	nulluser()
 	/* Create a process to finish startup and start main */
 
 	resume(create((void *)startup, INITSTK, INITPRIO,
-					"Startup process", 0, NULL));
+					"Startup process", 0));
 
 	/* Become the Null process (i.e., guarantee that the CPU has	*/
 	/*  something to run when no other process is ready to execute)	*/
@@ -107,10 +107,9 @@ void	nulluser()
 local process	startup(void)
 {
 	/* Create a process to execute function main() */
-	while(1);
 
-	syscall_resume(syscall_create((void *)main, INITPRIO,
-					"Main process", 0, NULL));
+	syscall_resume(syscall_create((void *)main, INITSTK, INITPRIO,
+					"Main process", 0));
 
 	/* Startup process exits at this point */
 
@@ -163,7 +162,8 @@ static	void	sysinit()
 		prptr = &proctab[i];
 		prptr->prstate = PR_FREE;
 		prptr->prname[0] = NULLCH;
-		prptr->prstkbase = NULL;
+		prptr->prkstkbase = NULL;
+		prptr->prustkbase = NULL;
 		prptr->prprio = 0;
 	}
 
@@ -173,7 +173,8 @@ static	void	sysinit()
 	prptr->prstate = PR_CURR;
 	prptr->prprio = 0;
 	strncpy(prptr->prname, "prnull", 7);
-	prptr->prstkbase = getstk(NULLSTK);
+	prptr->prkstkbase = getstk(NULLSTK);
+	prptr->prustkbase = getstk(NULLSTK);
 	prptr->prstklen = NULLSTK;
 	prptr->prstkptr = 0;
 	currpid = NULLPROC;

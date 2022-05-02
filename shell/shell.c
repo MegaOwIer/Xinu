@@ -279,7 +279,7 @@ process	shell (
 		/* If creation or argument copy fails, report error */
 
 		if ((child == SYSERR) ||
-		    (addargs(child, ntok, tok, tlen, tokbuf, &tmparg)
+		    (syscall_addargs(child, ntok, tok, tlen, tokbuf, &tmparg)
 							== SYSERR) ) {
 			syscall_fprintf(dev, SHELL_CREATMSG);
 			continue;

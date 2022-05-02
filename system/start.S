@@ -358,12 +358,9 @@ cpuid:
 	# ret_k2u() - return from kernel mode to user mode
 	.globl ret_k2u
 ret_k2u:
-	popw	%ds
-	addl	$2, %esp
-	pushw	%ax
+	popl	%ds
 	movw	%ds, %ax
 	movw	%ax, %es
 	movw	%ax, %fs
 	movw	%ax, %gs
-	popw	%ax
 	iret

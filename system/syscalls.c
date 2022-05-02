@@ -18,21 +18,29 @@ const void *syscalls[] = {
 	&control,		// 12
 	&kill,			// 13
 	&getpid,		// 14
+	&addargs,		// 15
 	NULL,
 };
 
 // Syscall wrapper for doing syscall in user space
 
 uint32 do_syscall(uint32 id, uint32 args_count, ...) {
-	uint32 return_value;
+	uint32 return_value = SYSERR;
 
 	// You may need to pass these veriables to kernel side:
 
-	uint32 *ptr_return_value = return_value;
-	args_count;
-	uint32 *args_array = 1 + &args_count;
+	uint32 *ptr_return_value = &return_value;
+	uint32 *args_array = &args_count;
 
 	// Your code here ...
+	asm volatile (
+		"int	$0x22\n"
+		:
+		: "d"((long)syscalls[id]), 
+		  "c"((long)args_array), 
+		  "b"((long)ptr_return_value),
+		  "a"((long)proctab[getpid()].presp0)
+	);
 
 	return return_value;
 }

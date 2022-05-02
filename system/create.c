@@ -24,14 +24,26 @@ pid32	create(
 	struct	procent	*prptr;		/* Pointer to proc. table entry */
 	int32		i;
 	uint32		*a;		/* Points to list of args	*/
-	uint32		*saddr;		/* Stack address		*/
+	uint32		*ksaddr;	/* Kernel stack address		*/
+	uint32		*usaddr;	/* User stack address		*/
 
 	mask = disable();
 	if (ssize < MINSTK)
 		ssize = MINSTK;
 	ssize = (uint32) roundmb(ssize);
-	if ( (priority < 1) || ((pid=newpid()) == SYSERR) ||
-	     ((saddr = (uint32 *)getstk(ssize)) == (uint32 *)SYSERR) ) {
+	if ((priority < 1) || ((pid=newpid()) == SYSERR)) {
+		restore(mask);
+		return SYSERR;
+	}
+
+	ksaddr = (uint32 *)getstk(ssize);
+	if (ksaddr == (uint32 *)SYSERR) {
+		restore(mask);
+		return SYSERR;
+	}
+	usaddr = (uint32 *)getstk(ssize);
+	if (usaddr == (uint32 *)SYSERR) {
+		freestk(ksaddr, ssize);
 		restore(mask);
 		return SYSERR;
 	}
@@ -42,7 +54,8 @@ pid32	create(
 	/* Initialize process table entry for new process */
 	prptr->prstate = PR_SUSP;	/* Initial state is suspended	*/
 	prptr->prprio = priority;
-	prptr->prstkbase = (char *)saddr;
+	prptr->prkstkbase = (char *)ksaddr;
+	prptr->prustkbase = (char *)usaddr;
 	prptr->prstklen = ssize;
 	prptr->prname[PNMLEN-1] = NULLCH;
 	for (i=0 ; i<PNMLEN-1 && (prptr->prname[i]=name[i])!=NULLCH; i++)
@@ -56,55 +69,67 @@ pid32	create(
 	prptr->prdesc[1] = CONSOLE;
 	prptr->prdesc[2] = CONSOLE;
 
-	/* Initialize stack as if the process was called		*/
 
-	*saddr = STACKMAGIC;
-	savsp = (uint32)saddr;
+	/* Initialize user stack as if the process was called		*/
+
+	*usaddr = STACKMAGIC;
 
 	/* Push arguments */
 	a = (uint32 *)(&nargs + 1);	/* Start of args		*/
-	a += nargs -1;			/* Last argument		*/
-	for ( ; nargs > 0 ; nargs--)	/* Machine dependent; copy args	*/
-		*--saddr = *a--;	/* onto created process's stack	*/
-	*--saddr = (long)INITRET;	/* Push on return address	*/
+	a += nargs - 1;			/* Last argument		*/
+	for (i = nargs; i > 0; i--)	/* Machine dependent; copy args	*/
+		*--usaddr = *a--;	/* onto created process's stack	*/
+	*--usaddr = (long)INITRET;	/* Push on return address	*/
 
-	TSS.tss_esp0 = (long)saddr;	/* TSS configuation		*/
 
+	/* Initialize kernal stack as if the process was called		*/
+
+	*ksaddr = STACKMAGIC;
+	savsp = (uint32)ksaddr;
+
+	a = (uint32 *)(&nargs + 1);
+	a += nargs - 1;
+	for (i = nargs; i > 0; i--)
+		*--ksaddr = *a--;
+	*--ksaddr = (long)INITRET;
+
+	prptr->presp0 = ksaddr;		/* TSS configuation		*/
+	
 	/* The fake interrupt return stack				*/
-	*--saddr = 0x33;		/* SS in user mode		*/
-	--saddr;
-	*saddr = (long)saddr + 2;	/* %esp				*/
-	*--saddr = 0;			/* eflags			*/
-	*--saddr = 0x23;		/* CS in user mode		*/
-	*--saddr = (long)funcaddr;
-	*--saddr = 0x2B;		/* DS in user mode		*/
+	*--ksaddr = 0x33;		/* SS in user mode		*/
+	*--ksaddr = (long)usaddr;	/* %esp	in user mode		*/
+	*--ksaddr = 0x00000200;		/* eflags			*/
+	*--ksaddr = 0x23;		/* CS in user mode		*/
+	*--ksaddr = (long)funcaddr;
+	*--ksaddr = 0x2B;		/* DS in user mode		*/
 
 	/* The following entries on the stack must match what ctxsw	*/
 	/*   expects a saved process state to contain: ret address,	*/
 	/*   ebp, interrupt mask, flags, registers, and an old SP	*/
 
-	*--saddr = (long)ret_k2u;	/* Make the stack look like it's*/
+	*--ksaddr = (long)ret_k2u;	/* Make the stack look like it's*/
 					/*   half-way through a call to	*/
 					/*   ctxsw that "returns" to the*/
 					/*   new process		*/
-	*--saddr = savsp;		/* This will be register ebp	*/
+	*--ksaddr = savsp;		/* This will be register ebp	*/
 					/*   for process exit		*/
-	savsp = (uint32) saddr;		/* Start of frame for ctxsw	*/
-	*--saddr = 0x00000200;		/* New process runs with	*/
+	savsp = (uint32) ksaddr;	/* Start of frame for ctxsw	*/
+	*--ksaddr = 0x00000200;		/* New process runs with	*/
 					/*   interrupts enabled		*/
 
 	/* Basically, the following emulates an x86 "pushal" instruction*/
 
-	*--saddr = 0;			/* %eax */
-	*--saddr = 0;			/* %ecx */
-	*--saddr = 0;			/* %edx */
-	*--saddr = 0;			/* %ebx */
-	*--saddr = 0;			/* %esp; value filled in below	*/
-	pushsp = saddr;			/* Remember this location	*/
-	*--saddr = savsp;		/* %ebp (while finishing ctxsw)	*/
-	*--saddr = 0;			/* %esi */
-	*--saddr = 0;			/* %edi */
-	*pushsp = (unsigned long) (prptr->prstkptr = (char *)saddr);
+	*--ksaddr = 0;			/* %eax */
+	*--ksaddr = 0;			/* %ecx */
+	*--ksaddr = 0;			/* %edx */
+	*--ksaddr = 0;			/* %ebx */
+	*--ksaddr = 0;			/* %esp; value filled in below	*/
+	pushsp = ksaddr;		/* Remember this location	*/
+	*--ksaddr = savsp;		/* %ebp (while finishing ctxsw)	*/
+	*--ksaddr = 0;			/* %esi */
+	*--ksaddr = 0;			/* %edi */
+	*pushsp = (unsigned long) (prptr->prstkptr = (char *)ksaddr);
+
 	restore(mask);
 	return pid;
 }

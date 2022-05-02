@@ -21,9 +21,9 @@ syscall stacktrace(int pid)
 		sp = (unsigned long *)proc->prstkptr;
 		fp = sp + 2; 		/* where ctxsw leaves it */
 	}
-	kprintf("sp %X fp %X proc->prstkbase %X\n", sp, fp, proc->prstkbase);
+	kprintf("sp %X fp %X proc->prustkbase %X\n", sp, fp, proc->prustkbase);
 #ifdef STKDETAIL
-	while (sp < (unsigned long *)proc->prstkbase) {
+	while (sp < (unsigned long *)proc->prustkbase) {
 		for (; sp < fp; sp++)
 			kprintf("DATA (%08X) %08X (%d)\n", sp, *sp, *sp);
 		if (*sp == STACKMAGIC)
@@ -38,7 +38,7 @@ syscall stacktrace(int pid)
 		sp++;
 	}
 	kprintf("STACKMAGIC (should be %X): %X\n", STACKMAGIC, *sp);
-	if (sp != (unsigned long *)proc->prstkbase) {
+	if (sp != (unsigned long *)proc->prustkbase) {
 		kprintf("unexpected short stack\n");
 		return SYSERR;
 	}

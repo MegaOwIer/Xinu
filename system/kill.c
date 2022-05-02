@@ -29,7 +29,8 @@ syscall	kill(
 	for (i=0; i<3; i++) {
 		close(prptr->prdesc[i]);
 	}
-	freestk(prptr->prstkbase, prptr->prstklen);
+	freestk(prptr->prkstkbase, prptr->prstklen);
+	freestk(prptr->prustkbase, prptr->prstklen);
 
 	switch (prptr->prstate) {
 	case PR_CURR:

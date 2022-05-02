@@ -374,13 +374,49 @@ _Xint33:
 	pushl	$33
 	jmp	Xtrap
 
-	.globl  _Xint34			/* (reserved)			*/
+	.globl  _Xint34			/* Syscalls			*/
 _Xint34:
-	pushal
-	movl	%esp, %eax
-	pushl	%eax
-	pushl	$34
-	jmp	Xtrap
+	addl	$20, %esp
+	movl	%esp, (%eax)		/* Addr. of TSS.esp0		*/
+	subl	$20, %esp
+
+	pushl	%ds
+	pushl	%es
+	pushl	%fs
+	pushl	%gs
+
+	movl	$0x10, %eax		/* Data Segment of Kernel Mode	*/
+	movw	%ax, %ds
+	movw	%ax, %es
+	movw	%ax, %fs
+	movw	%ax, %gs
+
+	movl	(%ecx), %eax		/* # of args.			*/
+	leal	(%ecx, %eax, 4), %ecx	/* Addr. of last arg.		*/
+
+	pushl	%ebx			/* Return Value Addr.		*/
+	movl	%eax, %ebx
+
+.LoopBegin:
+	testl	%eax, %eax
+	je	.LoopEnd
+	pushl	(%ecx)
+	subl	$4, %ecx
+	subl	$1, %eax
+	jmp	.LoopBegin
+
+.LoopEnd:
+	call	*%edx
+
+	leal	(%esp, %ebx, 4), %esp
+	popl	%edx
+	movl	%eax, (%edx)
+	
+	popl	%gs
+	popl	%fs
+	popl	%es
+	popl	%ds
+	iret
 
 	.globl  _Xint35			/* (reserved)			*/
 _Xint35:
@@ -514,7 +550,7 @@ defevec:
 	.long	_Xint31			/* (reserved)			*/
 	.long	_Xint32			/* available for ext. interrupt	*/
 	.long	_Xint33			/* available for ext. interrupt	*/
-	.long	_Xint34			/* available for ext. interrupt	*/
+	.long	_Xint34			/* Syscalls			*/
 	.long	_Xint35			/* available for ext. interrupt	*/
 	.long	_Xint36			/* available for ext. interrupt	*/
 	.long	_Xint37			/* available for ext. interrupt	*/

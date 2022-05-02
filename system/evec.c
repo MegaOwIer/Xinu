@@ -101,7 +101,12 @@ int32	set_evec(uint32 xnum, uint32 handler)
 	pidt->igd_segsel = 0x8;		/* Kernel code segment */
 	pidt->igd_mbz = 0;
 	pidt->igd_type = IGDT_INTRG;
-	pidt->igd_dpl = 0;
+
+	if (xnum == 0x22) {
+		pidt->igd_dpl = 3;
+	} else {
+		pidt->igd_dpl = 0;
+	}
 	pidt->igd_present = 1;
 	pidt->igd_hoffset = handler >> 16;
 

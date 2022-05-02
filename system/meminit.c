@@ -47,17 +47,17 @@ struct	sd	gdt_copy[NGD] = {
 /*   sd_lolimit  sd_lobase   sd_midbase  sd_access   sd_hilim_fl sd_hibase */
 /* 0th entry NULL */
 {            0,          0,           0,         0,            0,        0, },
-/* 1st, Kernel Code Segment in Kernel Mode */
+/* 1st, Kernel Code Segment */
 {       0xffff,          0,           0,      0x9a,         0xcf,        0, },
-/* 2nd, Kernel Data Segment in Kernel Mode */
+/* 2nd, Kernel Data Segment */
 {       0xffff,          0,           0,      0x92,         0xcf,        0, },
-/* 3rd, Kernel Stack Segment in Kernel Mode */
+/* 3rd, Kernel Stack Segment */
 {       0xffff,          0,           0,      0x92,         0xcf,        0, },
-/* 4th, Kernel Code Segment in User Mode */
+/* 4th, User Code Segment */
 {       0xffff,          0,           0,      0xFA,         0xc0,        0, },
-/* 5th, Kernel Data Segment in User Mode */
+/* 5th, User Data Segment */
 {       0xffff,          0,           0,      0xF2,         0xc0,        0, },
-/* 6th, Kernel Stack Segment in User Mode */
+/* 6th, User Stack Segment */
 {       0xffff,          0,           0,      0xF2,         0xc0,        0, },
 /* 7th, TSS descriptor */
 [GDT_ENTRY_TSS] = 
@@ -72,11 +72,11 @@ extern	struct	sd	gdt[];	/* Global segment table			*/
  */
 void	meminit(void) {
 
-	struct	memblk	*memptr;	/* Ptr to memory block		*/
+	struct	memblk	*memptr;		/* Ptr to memory block		*/
 	struct	mbmregion	*mmap_addr;	/* Ptr to mmap entries		*/
 	struct	mbmregion	*mmap_addrend;	/* Ptr to end of mmap region	*/
-	struct	memblk	*next_memptr;	/* Ptr to next memory block	*/
-	uint32	next_block_length;	/* Size of next memory block	*/
+	struct	memblk	*next_memptr;		/* Ptr to next memory block	*/
+	uint32	next_block_length;		/* Size of next memory block	*/
 
 	mmap_addr = (struct mbmregion*)NULL;
 	mmap_addrend = (struct mbmregion*)NULL;

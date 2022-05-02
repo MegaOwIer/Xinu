@@ -44,7 +44,9 @@ struct procent {		/* Entry in the process table		*/
 	uint16	prstate;	/* Process state: PR_CURR, etc.		*/
 	pri16	prprio;		/* Process priority			*/
 	char	*prstkptr;	/* Saved stack pointer			*/
-	char	*prstkbase;	/* Base of run time stack		*/
+	char	*presp0;	/* Stack pointer of kernel stack	*/
+	char	*prkstkbase;	/* Base of run time kernel stack	*/
+	char	*prustkbase;	/* Base of run time user stack		*/
 	uint32	prstklen;	/* Stack length in bytes		*/
 	char	prname[PNMLEN];	/* Process name				*/
 	sid32	prsem;		/* Semaphore on which process waits	*/
