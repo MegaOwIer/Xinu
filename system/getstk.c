@@ -3,50 +3,53 @@
 #include <xinu.h>
 
 /*------------------------------------------------------------------------
- *  getstk  -  Allocate stack memory, returning highest word address
+ *  getstk  -  Allocate stack memory for a new process and add to its 
+ 	       page table. Return logical address of the highest word
  *------------------------------------------------------------------------
  */
 char  	*getstk(
-	  uint32	nbytes		/* Size of memory requested	*/
+	  uint32		nbytes,		/* Siz of mem requested	*/
+	  struct	pt	*pgtable,
+	  bool8			is_kernel
 	)
 {
 	intmask	mask;			/* Saved interrupt mask		*/
-	struct	memblk	*prev, *curr;	/* Walk through memory list	*/
-	struct	memblk	*fits, *fitsprev; /* Record block that fits	*/
+	uint32	npages;			/* # of pages to be allocated	*/
+	uint32	page_addr;
+	char	*old_log, *new_log;
+	uint32	i, table;
 
 	mask = disable();
-	if (nbytes == 0) {
+	if (nbytes == 0 || nbytes > (4 << 20)) {	/* ssize <= 4MB	*/
 		restore(mask);
 		return (char *)SYSERR;
 	}
 
-	nbytes = (uint32) roundmb(nbytes);	/* Use mblock multiples	*/
+	nbytes = roundpage(nbytes);		/* Use psize multiples	*/
+	npages = nbytes / PAGE_SIZE;
 
-	prev = &memlist;
-	curr = memlist.mnext;
-	fits = NULL;
-	fitsprev = NULL;  /* Just to avoid a compiler warning */
+	old_log = getmem(nbytes);
 
-	while (curr != NULL) {			/* Scan entire list	*/
-		if (curr->mlength >= nbytes) {	/* Record block address	*/
-			fits = curr;		/*   when request fits	*/
-			fitsprev = prev;
+	if (is_kernel) {
+		new_log = (char *)&end + 2 * PAGE_SIZE;
+	} else {
+		new_log = (char *)maxheap;
+	}
+	new_log -= nbytes;
+
+	for (i = 0; i < npages; i++) {
+		table = ((uint32)new_log >> 12) & 0x3FF;
+		
+		page_addr = log2phy(old_log);
+		pgtable->entry[table] = page_addr | PT_ENTRY_P | PT_ENTRY_W;
+		if (!is_kernel) {
+			pgtable->entry[table] |= PT_ENTRY_U;
 		}
-		prev = curr;
-		curr = curr->mnext;
+
+		old_log += PAGE_SIZE;
+		new_log += PAGE_SIZE;
 	}
 
-	if (fits == NULL) {			/* No block was found	*/
-		restore(mask);
-		return (char *)SYSERR;
-	}
-	if (nbytes == fits->mlength) {		/* Block is exact match	*/
-		fitsprev->mnext = fits->mnext;
-	} else {				/* Remove top section	*/
-		fits->mlength -= nbytes;
-		fits = (struct memblk *)((uint32)fits + fits->mlength);
-	}
-	memlist.mlength -= nbytes;
 	restore(mask);
-	return (char *)((uint32) fits + nbytes - sizeof(uint32));
+	return old_log - sizeof(uint32);
 }

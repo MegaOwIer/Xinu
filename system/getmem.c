@@ -3,15 +3,19 @@
 #include <xinu.h>
 
 /*------------------------------------------------------------------------
- *  getmem  -  Allocate heap storage, returning lowest word address
+ *  getmem  -  Allocate heap storage, map to page table, and
+ 	       return logical address of the lowest word
  *------------------------------------------------------------------------
  */
 char  	*getmem(
-	  uint32	nbytes		/* Size of memory requested	*/
+	  uint32	nbytes			/* Size of memory requested	*/
 	)
 {
-	intmask	mask;			/* Saved interrupt mask		*/
-	struct	memblk	*prev, *curr, *leftover;
+	intmask		mask;			/* Saved interrupt mask		*/
+	uint32		npages;			/* # of pages to be allocated	*/
+	char		*page_log, *mem_begin;
+	uint32		page_phy;
+	uint32		i;
 
 	mask = disable();
 	if (nbytes == 0) {
@@ -19,32 +23,20 @@ char  	*getmem(
 		return (char *)SYSERR;
 	}
 
-	nbytes = (uint32) roundmb(nbytes);	/* Use memblk multiples	*/
+	nbytes = roundpage(nbytes);		/* Use psize multiples	*/
+	npages = nbytes / PAGE_SIZE;
+	
+	mem_begin = getheap(nbytes);
 
-	prev = &memlist;
-	curr = memlist.mnext;
-	while (curr != NULL) {			/* Search free list	*/
-
-		if (curr->mlength == nbytes) {	/* Block is exact match	*/
-			prev->mnext = curr->mnext;
-			memlist.mlength -= nbytes;
-			restore(mask);
-			return (char *)(curr);
-
-		} else if (curr->mlength > nbytes) { /* Split big block	*/
-			leftover = (struct memblk *)((uint32) curr +
-					nbytes);
-			prev->mnext = leftover;
-			leftover->mnext = curr->mnext;
-			leftover->mlength = curr->mlength - nbytes;
-			memlist.mlength -= nbytes;
-			restore(mask);
-			return (char *)(curr);
-		} else {			/* Move to next block	*/
-			prev = curr;
-			curr = curr->mnext;
+	/* Allocating pages and mapping */
+	if (mem_begin != (char *)SYSERR) {
+		for (i = 0; i < npages; i++) {
+			page_log = mem_begin + i * PAGE_SIZE;
+			page_phy = palloc();
+			fillentry(page_log, page_phy, PT_ENTRY_P | PT_ENTRY_W | PT_ENTRY_U, FALSE);
 		}
 	}
+
 	restore(mask);
-	return (char *)SYSERR;
+	return mem_begin;
 }

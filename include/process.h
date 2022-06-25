@@ -48,6 +48,7 @@ struct procent {		/* Entry in the process table		*/
 	char	*prkstkbase;	/* Base of run time kernel stack	*/
 	char	*prustkbase;	/* Base of run time user stack		*/
 	uint32	prstklen;	/* Stack length in bytes		*/
+	uint32	prpgdir;	/* Phy.addr. of page table dir		*/
 	char	prname[PNMLEN];	/* Process name				*/
 	sid32	prsem;		/* Semaphore on which process waits	*/
 	pid32	prparent;	/* ID of the creating process		*/

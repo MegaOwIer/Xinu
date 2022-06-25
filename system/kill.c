@@ -12,7 +12,8 @@ syscall	kill(
 {
 	intmask	mask;			/* Saved interrupt mask		*/
 	struct	procent *prptr;		/* Ptr to process's table entry	*/
-	int32	i;			/* Index into descriptors	*/
+	uint32	i, j;			/* Index into descriptors	*/
+	struct	pt	*cur_pgdir, *cur_pgtable;
 
 	mask = disable();
 	if (isbadpid(pid) || (pid == NULLPROC)
@@ -29,8 +30,71 @@ syscall	kill(
 	for (i=0; i<3; i++) {
 		close(prptr->prdesc[i]);
 	}
-	freestk(prptr->prkstkbase, prptr->prstklen);
-	freestk(prptr->prustkbase, prptr->prstklen);
+
+	/* Free stack, heap and page table of this process */
+	if (pid == getpid()) {
+		/* Heap and user stack */
+		for (i = 3; i < PT_NENTRY; i++) {
+			if (~pgdir->entry[i] & PT_ENTRY_P) {
+				continue;
+			}
+			cur_pgtable = (struct pt *)(0x00800000 + (i << 12));
+			for (j = 0; j < PT_NENTRY; j++) {
+				if (cur_pgtable->entry[j] & PT_ENTRY_P) {
+					pfree(get_addr(cur_pgtable->entry[j]));
+				}
+			}
+			pfree(get_addr(pgdir->entry[i]));
+		}
+
+		/* Kernel stack */
+		j = (uint32)&end / PAGE_SIZE + 1;
+		cur_pgtable = (struct pt *)0x00800000;
+		pfree(get_addr(cur_pgtable->entry[j]));
+		pfree(get_addr(pgdir->entry[0]));
+	} else {
+		cur_pgdir = (struct pt *)getheap(sizeof(struct pt));
+		if(cur_pgdir == (struct pt *)SYSERR) {
+			panic("Error occured while killing a process.");
+			restore(mask);
+			return SYSERR;
+		}
+		fillentry((char *)cur_pgdir, prptr->prpgdir, PT_ENTRY_P | PT_ENTRY_W, FALSE);
+
+		cur_pgtable = (struct pt *)getheap(sizeof(struct pt));
+		if(cur_pgtable == (struct pt *)SYSERR) {
+			panic("Error occured while killing a process.");
+			restore(mask);
+			return SYSERR;
+		}
+
+		/* Heap and user stack */
+		for (i = 3; i < PT_NENTRY; i++) {
+			if (~cur_pgdir->entry[i] & PT_ENTRY_P) {
+				continue;
+			}
+			fillentry((char *)cur_pgtable, get_addr(cur_pgdir->entry[i]), 
+				  PT_ENTRY_P | PT_ENTRY_W, FALSE);
+			for (j = 0; j < PT_NENTRY; j++) {
+				if (cur_pgtable->entry[j] & PT_ENTRY_P) {
+					pfree(get_addr(cur_pgtable->entry[j]));
+				}
+			}
+			pfree(get_addr(cur_pgdir->entry[i]));
+			invlpg((void *)cur_pgtable);
+		}
+
+		/* Kernel stack */
+		fillentry((char *)cur_pgtable, get_addr(cur_pgdir->entry[0]), 
+			  PT_ENTRY_P | PT_ENTRY_W, FALSE);
+		j = (uint32)&end / PAGE_SIZE + 1;
+		pfree(get_addr(cur_pgtable->entry[j]));
+		pfree(get_addr(cur_pgdir->entry[0]));
+
+		fillentry((char *)cur_pgtable, 0, 0, TRUE);
+		fillentry((char *)cur_pgdir, 0, 0, TRUE);
+	}
+	pfree(prptr->prpgdir);
 
 	switch (prptr->prstate) {
 	case PR_CURR:

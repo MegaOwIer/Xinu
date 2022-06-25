@@ -42,7 +42,7 @@ extern	pid32	create(void *, uint32, pri16, char *, uint32, ...);
 		do_generic_syscall(pid32, SYSCALL_CREATE, __VA_ARGS__)
 
 /* in file ctxsw.S */
-extern	void	ctxsw(void *, void *);
+extern	void	ctxsw(void *, void *, uint32);
 
 /* in file exit.c */
 extern	void	exit(void);
@@ -63,12 +63,17 @@ extern	syscall	freebuf(char *);
 
 /* in file freemem.c */
 extern	syscall	freemem(char *, uint32);
+#define syscall_freemem(...) \
+		do_generic_syscall(syscall, SYSCALL_KILL, __VA_ARGS__)
 
 /* in file getbuf.c */
 extern	char	*getbuf(bpid32);
 
 /* in file getc.c */
 extern	syscall	getc(did32);
+
+/* in file getheap.c */
+extern	char	*getheap(uint32);
 
 /* in file getitem.c */
 extern	pid32	getfirst(qid16);
@@ -77,17 +82,19 @@ extern	pid32	getitem(pid32);
 
 /* in file getmem.c */
 extern	char	*getmem(uint32);
+#define syscall_getmem(...) \
+		do_generic_syscall(char *, SYSCALL_GETMEM, __VA_ARGS__)
 
 /* in file getpid.c */
 extern	pid32	getpid(void);
 #define syscall_getpid(...) \
-		do_argless_syscall(syscall, SYSCALL_GETPID)
+		do_argless_syscall(pid32, SYSCALL_GETPID)
 
 /* in file getprio.c */
 extern	syscall	getprio(pid32);
 
 /* in file getstk.c */
-extern	char	*getstk(uint32);
+extern	char	*getstk(uint32, struct pt *, bool8);
 
 /* in file getticks.c */
 extern	void	getticks(uint64 *);
@@ -257,6 +264,16 @@ extern	syscall	open(did32, char *, char *);
 #define syscall_open(...) \
 		do_generic_syscall(syscall, SYSCALL_OPEN, __VA_ARGS__)
 
+/* in file page.c */
+extern	uint32	palloc();
+extern	syscall	pfree(uint32);
+
+/* in file pagetable.c */
+extern	bool8	isfree(char *);
+extern	uint32	log2phy(char *);
+extern	uint32	fillentry(char *, uint32, uint32, bool8);
+extern	void	invlpg(void *);
+
 /* in file panic.c */
 extern	void	panic(char *);
 
@@ -313,7 +330,7 @@ extern	devcall	ramwrite(struct dentry *, char *, int32);
 /* in file read.c */
 extern	syscall	read(did32, char *, uint32);
 #define syscall_read(...) \
-		do_generic_syscall(pri16, SYSCALL_READ, __VA_ARGS__)
+		do_generic_syscall(syscall, SYSCALL_READ, __VA_ARGS__)
 
 /* in file ready.c */
 extern	status	ready(pid32);

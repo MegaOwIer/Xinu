@@ -12,14 +12,12 @@ extern	void	*_end;		/* End of Xinu code			*/
 
 extern	void main(void);	/* Main is the first process created	*/
 static	void sysinit(); 	/* Internal system initialization	*/
-extern	void meminit(void);	/* Initializes the free memory list	*/
 local	process startup(void);	/* Process to finish startup tasks	*/
 
 /* Declarations of major kernel variables */
 
 struct	procent	proctab[NPROC];	/* Process table			*/
 struct	sentry	semtab[NSEM];	/* Semaphore table			*/
-struct	memblk	memlist;	/* List of free memory blocks		*/
 
 /* Active system status */
 
@@ -45,26 +43,20 @@ pid32	currpid;		/* ID of currently executing process	*/
  */
 
 void	nulluser()
-{	
-	struct	memblk	*memptr;	/* Ptr to memory block		*/
-	uint32	free_mem;		/* Total amount of free memory	*/
-	
+{
+	uint32	free_page;		/* Total amount of free page	*/
+	uint32	*cur;
+
 	/* Initialize the system */
 
 	sysinit();
 
 	/* Output Xinu memory layout */
-	free_mem = 0;
-	for (memptr = memlist.mnext; memptr != NULL;
-						memptr = memptr->mnext) {
-		free_mem += memptr->mlength;
+	free_page = 0;
+	for (cur = freelist; cur != NULL; cur = (uint32 *)*cur) {
+		free_page += 1;
 	}
-	
-	kprintf("%10d bytes of free memory.  Free list:\n", free_mem);
-	for (memptr=memlist.mnext; memptr!=NULL;memptr = memptr->mnext) {
-	    kprintf("           [0x%08X to 0x%08X]\n",
-		(uint32)memptr, ((uint32)memptr) + memptr->mlength - 1);
-	}
+	kprintf("%10d bytes (%d physical pages) of free memory.\n", free_page * PAGE_SIZE, free_page);
 
 	kprintf("%10d bytes of Xinu code.\n",
 		(uint32)&etext - (uint32)&text);
@@ -141,10 +133,6 @@ static	void	sysinit()
 	/* Initialize the interrupt vectors */
 
 	initevec();
-	
-	/* Initialize free memory list */
-	
-	meminit();
 
 	/* Initialize system variables */
 
@@ -167,14 +155,14 @@ static	void	sysinit()
 		prptr->prprio = 0;
 	}
 
-	/* Initialize the Null process entry */	
+	/* Initialize the Null process entry */
 
 	prptr = &proctab[NULLPROC];
 	prptr->prstate = PR_CURR;
 	prptr->prprio = 0;
 	strncpy(prptr->prname, "prnull", 7);
-	prptr->prkstkbase = getstk(NULLSTK);
-	prptr->prustkbase = getstk(NULLSTK);
+	prptr->prkstkbase = (char *)((uint32)&end + 2 * PAGE_SIZE - 4);
+	prptr->prustkbase = NULL;	/* prnull doesn't need user stk	*/
 	prptr->prstklen = NULLSTK;
 	prptr->prstkptr = 0;
 	currpid = NULLPROC;

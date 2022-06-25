@@ -1,31 +1,47 @@
-/* memory.h - roundmb, truncmb, freestk */
+/* memory.h - roundpage, truncpage, phy2rec, rec2phym, freestk */
 
-#define	PAGE_SIZE	4096
+#define	PAGE_SIZE	(4096)
 
 /*----------------------------------------------------------------------
- * roundmb, truncmb - Round or truncate address to memory block size
+ * roundpage, truncpage - Round or truncate address to page size
  *----------------------------------------------------------------------
  */
-#define	roundmb(x)	(char *)( (7 + (uint32)(x)) & (~7) )
-#define	truncmb(x)	(char *)( ((uint32)(x)) & (~7) )
+#define	roundpage(x)	(uint32)((PAGE_SIZE - 1 + (uint32)(x)) & (~(PAGE_SIZE - 1)))
+#define	truncpage(x)	(uint32)(((uint32)(x)) & (~(PAGE_SIZE - 1)))
+
+/*----------------------------------------------------------------------
+ * phy2rec, rec2phy - Convert between free page addr. and its record
+ *----------------------------------------------------------------------
+ */
+#define phy2rec(x)	(((uint32)(x) / PAGE_SIZE) * 4 + 0x400000)
+#define rec2phy(x)	(((uint32)(x) - 0x400000) / 4 * PAGE_SIZE)
 
 /*----------------------------------------------------------------------
  *  freestk  --  Free stack memory allocated by getstk
  *----------------------------------------------------------------------
  */
 #define	freestk(p,len)	freemem((char *)((uint32)(p)		\
-				- ((uint32)roundmb(len))	\
+				- ((uint32)roundpage(len))	\
 				+ (uint32)sizeof(uint32)),	\
-				(uint32)roundmb(len) )
+				(uint32)roundpage(len) )
 
-struct	memblk	{			/* See roundmb & truncmb	*/
-	struct	memblk	*mnext;		/* Ptr to next free memory blk	*/
-	uint32	mlength;		/* Size of blk (includes memblk)*/
-	};
-extern	struct	memblk	memlist;	/* Head of free memory list	*/
 extern	void	*minheap;		/* Start of heap		*/
 extern	void	*maxheap;		/* Highest valid heap address	*/
 
+#define KSTKBASE	((uint32)&end + 2 * PAGE_SIZE - sizeof(uint32))
+#define USTKBASE	((uint32)maxheap - sizeof(uint32))
+
+#define	PT_NENTRY	(1 << 10)
+#define PT_ENTRY_P	0x1		/* Page table entry present	*/
+#define PT_ENTRY_W	0x2		/* Page table entry writable	*/
+#define PT_ENTRY_U	0x4		/* Page table entry user	*/
+#define	get_addr(x)	((x) & 0xFFFFF000)
+
+struct pt {
+	uint32	entry[PT_NENTRY];
+};
+extern	uint32	*freelist;		/* Head of free page list	*/
+extern	struct	pt	*pgdir;
 
 /* Added by linker */
 

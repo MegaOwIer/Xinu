@@ -26,24 +26,66 @@ pid32	create(
 	uint32		*a;		/* Points to list of args	*/
 	uint32		*ksaddr;	/* Kernel stack address		*/
 	uint32		*usaddr;	/* User stack address		*/
+	struct	pt	*new_pgdir, *new_pt0, *old_pt0, *new_ptx;
 
 	mask = disable();
 	if (ssize < MINSTK)
 		ssize = MINSTK;
-	ssize = (uint32) roundmb(ssize);
+	ssize = roundpage(ssize);
 	if ((priority < 1) || ((pid=newpid()) == SYSERR)) {
 		restore(mask);
 		return SYSERR;
 	}
 
-	ksaddr = (uint32 *)getstk(ssize);
-	if (ksaddr == (uint32 *)SYSERR) {
+	/* Create page table for the new process */
+	new_pgdir = (struct pt *)getmem(PAGE_SIZE);
+	if (new_pgdir == (struct pt *)SYSERR) {
 		restore(mask);
 		return SYSERR;
 	}
-	usaddr = (uint32 *)getstk(ssize);
+	memset((void *)new_pgdir, 0, PAGE_SIZE);
+
+	new_pt0 = (struct pt *)getmem(PAGE_SIZE);
+	if (new_pt0 == (struct pt *)SYSERR) {
+		freemem((char *)new_pgdir, PAGE_SIZE);
+		restore(mask);
+		return SYSERR;
+	}
+	old_pt0 = (struct pt *)0x00800000;
+	for (i = 0; i < PT_NENTRY; i++) {
+		new_pt0->entry[i] = old_pt0->entry[i];
+	}
+
+	new_ptx = (struct pt *)getmem(PAGE_SIZE);
+	if (new_ptx == (struct pt *)SYSERR) {
+		freemem((char *)new_pgdir, PAGE_SIZE);
+		freemem((char *)new_pt0, PAGE_SIZE);
+		restore(mask);
+		return SYSERR;
+	}
+	memset((void *)new_ptx, 0, PAGE_SIZE);
+
+	/* Fill in page table dir */
+	new_pgdir->entry[0] = log2phy((char *)new_pt0) | PT_ENTRY_P | PT_ENTRY_W | PT_ENTRY_U;
+	new_pgdir->entry[1] = pgdir->entry[1];
+	new_pgdir->entry[2] = log2phy((char *)new_pgdir) | PT_ENTRY_P | PT_ENTRY_W | PT_ENTRY_U;
+	new_pgdir->entry[1015] = log2phy((char *)new_ptx) | PT_ENTRY_P | PT_ENTRY_W | PT_ENTRY_U;
+
+	/* Allocate stack for the new process, which is on the heap */
+	ksaddr = (uint32 *)getstk(KERNELSTK, new_pt0, TRUE);
+	if (ksaddr == (uint32 *)SYSERR) {
+		freemem((char *)new_pgdir, PAGE_SIZE);
+		freemem((char *)new_pt0, PAGE_SIZE);
+		freemem((char *)new_ptx, PAGE_SIZE);
+		restore(mask);
+		return SYSERR;
+	}
+	usaddr = (uint32 *)getstk(ssize, new_ptx, FALSE);
 	if (usaddr == (uint32 *)SYSERR) {
-		freestk(ksaddr, ssize);
+		freemem((char *)new_pgdir, PAGE_SIZE);
+		freemem((char *)new_pt0, PAGE_SIZE);
+		freemem((char *)new_ptx, PAGE_SIZE);
+		freestk((char *)ksaddr, KERNELSTK);
 		restore(mask);
 		return SYSERR;
 	}
@@ -56,6 +98,7 @@ pid32	create(
 	prptr->prprio = priority;
 	prptr->prkstkbase = (char *)ksaddr;
 	prptr->prustkbase = (char *)usaddr;
+	prptr->prpgdir = log2phy((char *)new_pgdir);
 	prptr->prstklen = ssize;
 	prptr->prname[PNMLEN-1] = NULLCH;
 	for (i=0 ; i<PNMLEN-1 && (prptr->prname[i]=name[i])!=NULLCH; i++)
@@ -70,7 +113,7 @@ pid32	create(
 	prptr->prdesc[2] = CONSOLE;
 
 
-	/* Initialize user stack as if the process was called		*/
+	/* Initialize user stack as if the process were called		*/
 
 	*usaddr = STACKMAGIC;
 
@@ -81,39 +124,42 @@ pid32	create(
 		*--usaddr = *a--;	/* onto created process's stack	*/
 	*--usaddr = (long)INITRET;	/* Push on return address	*/
 
+	usaddr = (uint32 *)(USTKBASE - ((uint32)prptr->prustkbase - (uint32)usaddr));
 
 	/* Initialize kernal stack as if the process was called		*/
 
+#define	realkptr(x)		(KSTKBASE - ((uint32)prptr->prkstkbase - (uint32)(x)))
+
 	*ksaddr = STACKMAGIC;
-	savsp = (uint32)ksaddr;
+	savsp = realkptr(ksaddr);
 
 	a = (uint32 *)(&nargs + 1);
 	a += nargs - 1;
 	for (i = nargs; i > 0; i--)
 		*--ksaddr = *a--;
-	*--ksaddr = (long)INITRET;
+	*--ksaddr = (uint32)INITRET;
 
-	prptr->presp0 = ksaddr;		/* TSS configuation		*/
+	prptr->presp0 = (char *)realkptr(ksaddr); /* TSS configuation	*/
 	
 	/* The fake interrupt return stack				*/
 	*--ksaddr = 0x33;		/* SS in user mode		*/
-	*--ksaddr = (long)usaddr;	/* %esp	in user mode		*/
+	*--ksaddr = (uint32)usaddr;	/* %esp	in user mode		*/
 	*--ksaddr = 0x00000200;		/* eflags			*/
 	*--ksaddr = 0x23;		/* CS in user mode		*/
-	*--ksaddr = (long)funcaddr;
+	*--ksaddr = (uint32)funcaddr;
 	*--ksaddr = 0x2B;		/* DS in user mode		*/
 
 	/* The following entries on the stack must match what ctxsw	*/
 	/*   expects a saved process state to contain: ret address,	*/
 	/*   ebp, interrupt mask, flags, registers, and an old SP	*/
 
-	*--ksaddr = (long)ret_k2u;	/* Make the stack look like it's*/
+	*--ksaddr = (uint32)ret_k2u;	/* Make the stack look like it's*/
 					/*   half-way through a call to	*/
 					/*   ctxsw that "returns" to the*/
 					/*   new process		*/
 	*--ksaddr = savsp;		/* This will be register ebp	*/
 					/*   for process exit		*/
-	savsp = (uint32) ksaddr;	/* Start of frame for ctxsw	*/
+	savsp = realkptr(ksaddr);	/* Start of frame for ctxsw	*/
 	*--ksaddr = 0x00000200;		/* New process runs with	*/
 					/*   interrupts enabled		*/
 
@@ -128,7 +174,28 @@ pid32	create(
 	*--ksaddr = savsp;		/* %ebp (while finishing ctxsw)	*/
 	*--ksaddr = 0;			/* %esi */
 	*--ksaddr = 0;			/* %edi */
-	*pushsp = (unsigned long) (prptr->prstkptr = (char *)ksaddr);
+
+	prptr->prstkptr = (char *)realkptr(ksaddr);
+	*pushsp = (uint32)prptr->prstkptr;
+#undef	realkptr
+
+	fillentry((char *)new_pgdir, 0, 0, TRUE);
+	invlpg((void *)new_pgdir);
+	fillentry((char *)new_pt0, 0, 0, TRUE);
+	invlpg((void *)new_pt0);
+	fillentry((char *)new_ptx, 0, 0, TRUE);
+	invlpg((void *)new_ptx);
+
+	for (i = 0; i < KERNELSTK; i += PAGE_SIZE) {
+		fillentry(prptr->prkstkbase + i, 0, 0, TRUE);
+		invlpg((void *)(prptr->prkstkbase + i));
+	}
+	for (i = 0; i < ssize; i += PAGE_SIZE) {
+		fillentry(prptr->prustkbase + i, 0, 0, TRUE);
+		invlpg((void *)(prptr->prustkbase + i));
+	}
+	prptr->prkstkbase = (char *)KSTKBASE;
+	prptr->prustkbase = (char *)USTKBASE;
 
 	restore(mask);
 	return pid;
