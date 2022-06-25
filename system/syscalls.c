@@ -19,6 +19,8 @@ const void *syscalls[] = {
 	&kill,			// 13
 	&getpid,		// 14
 	&addargs,		// 15
+	&getmem,		// 16
+	&freemem,		// 17
 	NULL,
 };
 
