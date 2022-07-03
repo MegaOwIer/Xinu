@@ -45,19 +45,20 @@ void merge_sort(int32 n, char *args[])
  */
 shellcmd xsh_sort(int32 nargs, char *args[])
 {
-    if (nargs == 2 && strncmp(args[1], "--help", 7) == 0) {
-        syscall_printf("Use: %s\n\n", args[0]);
-        syscall_printf("Description:\n");
-        syscall_printf("\tSort args\n");
-        syscall_printf("Options:\n");
-        syscall_printf("\t--help\t display this help and exit\n");
-        return 0;
-    }
+	if (nargs == 2 && strncmp(args[1], "--help", 7) == 0) {
+		syscall_printf("Use: %s\n\n", args[0]);
+		syscall_printf("Description:\n");
+		syscall_printf("\tSort args\n");
+		syscall_printf("Options:\n");
+		syscall_printf("\t--help\t display this help and exit\n");
+		return 0;
+	}
 
-    merge_sort(nargs - 1, args + 1);
+	merge_sort(nargs - 1, args + 1);
 
-    for (int i = 1; i < nargs; i++)
-        syscall_printf("%s\n", args[i]);
+	for (int i = 1; i < nargs; i++) {
+		syscall_printf("%s\n", args[i]);
+	}
 
-    return 0;
+	return 0;
 }

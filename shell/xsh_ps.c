@@ -38,13 +38,13 @@ shellcmd xsh_ps(int nargs, char *args[])
 
 	/* Print header for items from the process table */
 
-	syscall_printf("%3s %-16s %5s %4s %4s %10s %-10s %10s\n",
-		       "Pid", "Name", "State", "Prio", "Ppid", "Stack Base",
+	syscall_printf("%3s %-16s %5s %4s %4s %-10s %10s\n",
+		       "Pid", "Name", "State", "Prio", "Ppid",
 		       "Stack Ptr", "Stack Size");
 
-	syscall_printf("%3s %-16s %5s %4s %4s %10s %-10s %10s\n",
+	syscall_printf("%3s %-16s %5s %4s %4s %-10s %10s\n",
 		       "---", "----------------", "-----", "----", "----",
-		       "----------", "----------", "----------");
+		       "----------", "----------");
 
 	/* Output information for each process */
 
@@ -53,10 +53,9 @@ shellcmd xsh_ps(int nargs, char *args[])
 		if (prptr->prstate == PR_FREE) {  /* skip unused slots	*/
 			continue;
 		}
-		syscall_printf("%3d %-16s %s %4d %4d 0x%08X 0x%08X 0x%08X %8d\n",
-			       i, prptr->prname, pstate[(int)prptr->prstate],
-			       prptr->prprio, prptr->prparent, prptr->prkstkbase, prptr->prustkbase,
-			       prptr->prstkptr, prptr->prstklen);
+		syscall_printf("%3d %-16s %s %4d %4d 0x%08X %8d\n",
+			       i, prptr->prname, pstate[(int)prptr->prstate], prptr->prprio, 
+			       prptr->prparent, prptr->prstkptr, prptr->prstklen);
 	}
 	return 0;
 }
