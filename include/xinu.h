@@ -27,6 +27,7 @@
 #include <string.h>
 
 #include <tss.h>
+#include <kbd.h>
 
 #ifndef	VERSION
 #define	VERSION	"11.45.1.4"

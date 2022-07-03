@@ -133,6 +133,24 @@ extern	devcall	ioerr(void);
 /* in file ionull.c */
 extern	devcall	ionull(void);
 
+/* in file kbddispatch.S */
+extern	interrupt	kbddispatch(void);
+
+/* in file kbdgetc.c */
+extern	devcall	kbdgetc(struct dentry *);
+
+/* in file kbdhandler.c */
+extern	void	kbdhandler(void);
+
+/* in file kbdinit.c */
+extern	devcall	kbdinit(void);
+
+/* in file kbdputc.c */
+extern	devcall	kbdputc(struct dentry *, char);
+
+/* in file kbdread.c */
+extern	devcall	kbdread(struct dentry *, char *, int32);
+
 /* in file kill.c */
 extern	syscall	kill(pid32);
 #define syscall_kill(...) \
@@ -451,6 +469,11 @@ extern	syscall	unsleep(pid32);
 
 /* in file userret.c */
 extern	void	userret(void);
+
+/* in file vga.c */
+extern	void	vgainit(void);
+extern	devcall	vgaputc(char ch);
+extern	devcall	vgaerase1(bool8);
 
 /* in file wait.c */
 extern	syscall	wait(sid32);

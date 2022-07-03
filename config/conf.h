@@ -38,6 +38,7 @@ extern	struct	dentry	devtab[]; /* one entry per device */
 #define LFILE3               8	/* type lfl      */
 #define LFILE4               9	/* type lfl      */
 #define LFILE5              10	/* type lfl      */
+#define KBD                 11	/* type kbd      */
 
 /* Control block sizes */
 
@@ -47,18 +48,19 @@ extern	struct	dentry	devtab[]; /* one entry per device */
 #define	Nlfs	1
 #define	Nlfl	6
 #define	Nnam	1
+#define	Nkbd	1
 
-#define NDEVS 11
+#define NDEVS 12
 
 
 /* Configuration and Size Constants */
 
-#define	NPROC	     100	/* number of user processes		*/
-#define	NSEM	     100	/* number of semaphores			*/
-#define	IRQBASE	     32		/* base ivec for IRQ0			*/
-#define	IRQ_TIMER    IRQ_HW5	/* timer IRQ is wired to hardware 5	*/
-#define	IRQ_ATH_MISC IRQ_HW4	/* Misc. IRQ is wired to hardware 4	*/
-#define CLKFREQ      200000000	/* 200 MHz clock			*/
+#define	NPROC		100		/* number of user processes		*/
+#define	NSEM		100		/* number of semaphores			*/
+#define	IRQBASE		32		/* base ivec for IRQ0			*/
+#define	IRQ_TIMER	IRQ_HW5		/* timer IRQ is wired to hardware 5	*/
+#define	IRQ_ATH_MISC	IRQ_HW4		/* Misc. IRQ is wired to hardware 4	*/
+#define	CLKFREQ		200000000	/* 200 MHz clock			*/
 
 #define	LF_DISK_DEV	RAM0 
 

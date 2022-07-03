@@ -64,45 +64,57 @@ nam:
 		-w ioerr 	-s ioerr 	-n ioerr
 		-intr ioerr
 
+/* type of keyboard device */
+kbd:
+	on top
+		-i kbdinit 	-o ioerr 	-c ioerr
+		-r kbdread 	-g kbdgetc 	-p kbdputc
+		-w ioerr 	-s ioerr 	-n ioerr
+		-intr kbdhandler
+
 %%
 
 /* Actual device declarations that each give the name of a device that	*/
 /*   will be present in the system					*/
 
-   /* Define the console device to be a tty and specify CSR*/
-   CONSOLE is tty  on uart  csr 0001770 -irq 0044
+	/* Define the console device to be a tty and specify CSR*/
+	CONSOLE is tty  on uart  csr 0001770 -irq 0044
 
-   /* Define a null device */
-   NULLDEV is null on nothing
+	/* Define a null device */
+	NULLDEV is null on nothing
 
-   /* Define a namespace device */
-   NAMESPACE is nam on top
-   
-   /* Define a ram disk device */
-   RAM0 is ram on mem
+	/* Define a namespace device */
+	NAMESPACE is nam on top
 
-   /* Define the local file system master device (one per system) */
+	/* Define a ram disk device */
+	RAM0 is ram on mem
 
-   LFILESYS is lfs on ram
+	/* Define the local file system master device (one per system) */
 
-   /* Define local file pseudo-devices (multiple per system) */
+	LFILESYS is lfs on ram
 
-   LFILE0 is lfl on lfs
-   LFILE1 is lfl on lfs
-   LFILE2 is lfl on lfs
-   LFILE3 is lfl on lfs
-   LFILE4 is lfl on lfs
-   LFILE5 is lfl on lfs
+	/* Define local file pseudo-devices (multiple per system) */
+
+	LFILE0 is lfl on lfs
+	LFILE1 is lfl on lfs
+	LFILE2 is lfl on lfs
+	LFILE3 is lfl on lfs
+	LFILE4 is lfl on lfs
+	LFILE5 is lfl on lfs
+
+	/* Define keyboard device */
+
+	KBD is kbd on top csr 0001724 -irq 0041
 
 %%
 
 /* Configuration and Size Constants */
 
-#define	NPROC	     100	/* number of user processes		*/
-#define	NSEM	     100	/* number of semaphores			*/
-#define	IRQBASE	     32		/* base ivec for IRQ0			*/
-#define	IRQ_TIMER    IRQ_HW5	/* timer IRQ is wired to hardware 5	*/
-#define	IRQ_ATH_MISC IRQ_HW4	/* Misc. IRQ is wired to hardware 4	*/
-#define CLKFREQ      200000000	/* 200 MHz clock			*/
+#define	NPROC		100		/* number of user processes		*/
+#define	NSEM		100		/* number of semaphores			*/
+#define	IRQBASE		32		/* base ivec for IRQ0			*/
+#define	IRQ_TIMER	IRQ_HW5		/* timer IRQ is wired to hardware 5	*/
+#define	IRQ_ATH_MISC	IRQ_HW4		/* Misc. IRQ is wired to hardware 4	*/
+#define	CLKFREQ		200000000	/* 200 MHz clock			*/
 
 #define	LF_DISK_DEV	RAM0 
