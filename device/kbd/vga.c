@@ -209,7 +209,7 @@ bool8	vga_shellbanner(char ch)
 		if (opcode >= 30 && opcode <= 37) {
 			color = (color & 0xF8FF) | (color_map[opcode - 30] << 8);
 		} else if (opcode >= 40 && opcode <= 47) {
-			color = (color & 0x0FFF) | (color_map[opcode - 30] << 8);
+			color = (color & 0x0FFF) | (color_map[opcode - 40] << 12);
 		} else {
 			goto INVALID_BANNER;
 		}
