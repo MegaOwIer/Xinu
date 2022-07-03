@@ -14,6 +14,6 @@ devcall	kbdputc(
         if (ch == TY_NEWLINE) {
                 kbdputc(devptr, TY_RETURN);
 	}
-	vgaputc(ch);
+	vgaputc(ch, FALSE);
 	return OK;
 }

@@ -472,7 +472,7 @@ extern	void	userret(void);
 
 /* in file vga.c */
 extern	void	vgainit(void);
-extern	devcall	vgaputc(char ch);
+extern	devcall	vgaputc(char ch, bool8);
 extern	devcall	vgaerase1(bool8);
 
 /* in file wait.c */

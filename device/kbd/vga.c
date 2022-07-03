@@ -10,6 +10,7 @@ static	uint16	color = 0x0700;
 
 local	uint16	get_cursor(void);
 local	void	set_cursor(uint16);
+local	bool8	vga_shellbanner(char);
 
 
 /*------------------------------------------------------------------------
@@ -29,15 +30,22 @@ void	vgainit(void)
  *------------------------------------------------------------------------
  */
 devcall	vgaputc(
-	  char		ch
+	  char		ch,
+	  bool8		force
 	)
 {
 	uint16		cursor_pos, row, col;
 	uint16		i;
+	static	bool8	shell_banner = FALSE;
 
 	cursor_pos = get_cursor();
 	row = cursor_pos / KBD_WIDTH;
 	col = cursor_pos % KBD_WIDTH;
+
+	if (shell_banner && !force) {
+		shell_banner = vga_shellbanner(ch);
+		return OK;
+	}
 
 	switch (ch) {
 	case	TY_NEWLINE:
@@ -52,6 +60,14 @@ devcall	vgaputc(
 
 	case	TY_TAB:
 		col = (col / TAB_WIDTH + 1) * TAB_WIDTH;
+		break;
+
+	case	TY_ESC:
+		if (!shell_banner) {
+			shell_banner = TRUE;
+			vga_shellbanner(ch);
+			return OK;
+		}
 		break;
 
 	case	TY_BACKSP:
@@ -153,4 +169,61 @@ uint16	get_cursor(void)
 	pos = inb(0x3D5) << 8;
 	outb(0x3D4, 15);
 	return pos | inb(0x3D5);
+}
+
+
+/*------------------------------------------------------------------------
+ *  vga_shellbanner  -  Processing shell banner in VT100
+ *------------------------------------------------------------------------
+ */
+bool8	vga_shellbanner(char ch)
+{
+	static	char	buffer[64];
+	static	char	*it = buffer;
+	static	int16	color_map[] = {0x0, 0x4, 0x2, 0xE, 0x1, 0x5, 0x3, 0xF};
+
+	int32		opcode;
+	char		*i;
+
+	*it++ = ch;
+
+	if (ch != 'm') {
+		return TRUE;
+	}
+
+	if (buffer[1] != '[') {
+		goto INVALID_BANNER;
+	}
+
+	if (buffer[3] == 'm') {			/* length = 1 	*/
+		opcode = buffer[2] - '0';
+		if (opcode == 0) {
+			color = 0x0700;
+		} else if (opcode == 1) {
+			color |= 0x0800;
+		} else {
+			goto INVALID_BANNER;
+		}
+	} else if (buffer[4] == 'm') {		/* length = 2	*/
+		opcode = (buffer[2] - '0') * 10 + (buffer[3] - '0');
+		if (opcode >= 30 && opcode <= 37) {
+			color = (color & 0xF8FF) | (color_map[opcode - 30] << 8);
+		} else if (opcode >= 40 && opcode <= 47) {
+			color = (color & 0x0FFF) | (color_map[opcode - 30] << 8);
+		} else {
+			goto INVALID_BANNER;
+		}
+	} else {
+		goto INVALID_BANNER;
+	}
+
+	it = buffer;
+	return FALSE;
+
+
+INVALID_BANNER:
+	for (i = buffer; i != it; i++) {
+		vgaputc(*i, TRUE);
+	}
+	return FALSE;
 }

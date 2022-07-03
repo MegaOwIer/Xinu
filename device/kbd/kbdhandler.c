@@ -64,8 +64,8 @@ void	kbdhandler(void)
 		return;
 	} else if (c == TY_NEWLINE || c == TY_RETURN) {
 		icursor = kbdcb.tyicursor;
-		vgaputc(TY_RETURN);
-		vgaputc(TY_NEWLINE);
+		vgaputc(TY_RETURN, FALSE);
+		vgaputc(TY_NEWLINE, FALSE);
 		*kbdcb.tyitail++ = c;
 		if (kbdcb.tyitail >= &kbdcb.tyibuff[TY_IBUFLEN]) {
 			kbdcb.tyitail = kbdcb.tyibuff;
@@ -87,10 +87,10 @@ void	kbdhandler(void)
 	}
 
 	if (c < TY_BLANK || c == 0177) {
-		vgaputc(TY_UPARROW);
-		vgaputc(c + 0100);
+		vgaputc(TY_UPARROW, FALSE);
+		vgaputc(c + 0100, FALSE);
 	} else {
-		vgaputc(c);
+		vgaputc(c, FALSE);
 	}
 
 	*kbdcb.tyitail++ = c;
