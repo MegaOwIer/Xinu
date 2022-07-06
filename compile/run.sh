@@ -1,1 +1,1 @@
-make && qemu-system-i386 -nographic -serial mon:stdio -S -s -kernel xinu.elf
+make && qemu-system-i386 -nographic -serial mon:stdio -S -s -kernel xinu.elf -hda ~/Desktop/hdd.img

@@ -30,7 +30,13 @@ extern "C" {
 #include <stdio.h>
 #include <string.h>
 
+#include <disk.h>
+
 #include <filesystem.h>
+
+#ifndef	VERSION
+#define	VERSION	"11.45.1.4"
+#endif
 
 #ifdef __cplusplus
 }

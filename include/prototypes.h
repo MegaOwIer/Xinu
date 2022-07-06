@@ -35,6 +35,15 @@ extern	pid32	create(void *, uint32, pri16, char *, uint32, ...);
 /* in file ctxsw.S */
 extern	void	ctxsw(void *, void *);
 
+/* in file diskgetc.c */
+extern	devcall	diskgetc(struct dentry *);
+
+/* in file diskseek.c */
+extern	devcall	diskseek (struct dentry *, uint32);
+
+/* in file diskread.c */
+extern	devcall	diskread(struct dentry *, char *, int32);
+
 /* in file exit.c */
 extern	void	exit(void);
 

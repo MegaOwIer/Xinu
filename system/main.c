@@ -4,20 +4,18 @@
 
 process	main(void)
 {
+	char	*elf;
+	uint32	start;
 
-	/* Run the Xinu shell */
+	elf = getmem(8192);
+	memset(elf, 0, 8192);
 
-	recvclr();
-	resume(create(shell, 8192, 50, "shell", 1, CONSOLE));
+	read_file("HELLO.ELF", elf, 8192);
 
-	/* Wait for shell to exit and recreate it */
+	start = get_elf_entrypoint(elf);
+	resume(create(elf + start, INITSTK, INITPRIO, "hello", 1, (uint32)printf));
 
-	while (TRUE) {
-		receive();
-		sleepms(200);
-		kprintf("\n\nMain process recreating shell\n\n");
-		resume(create(shell, 4096, 20, "shell", 1, CONSOLE));
-	}
+	freemem(elf, 8192);
+	
 	return OK;
-    
 }
